@@ -80,3 +80,77 @@ clusterExport(cl, c("generate_circadian_drawings", "number_of_top_genes", "top.c
 parLapply(cl, X=1:number_of_top_genes, fun=generate_circadian_drawings, top_control_dataframe=top.control, circadian_drawing_function=circadianDrawing, zeitgeber_times=zeitgeber_times, gene_expression_dataframe=gene_expression_dataframe, gene_names=gene_names, data_labels=data_labels, special_information=special_information)
 stopCluster(cl)
 
+print('RhythmicityCode.R: Initializing create_shuffled_TOD function...')
+system('mkdir -p ./nullFolder')
+setwd('./nullFolder/')
+groupName <- 'control'
+permutations <- 10 #Alter to 1000 permutations upon completion.
+
+shuffleTOD_df <- data.frame(matrix(ncol=0, nrow=length(zeitgeber_times)))
+
+#' create_shuffled_TOD()
+#' A function to produce shuffled times of death (TOD) for the null distributions.
+#' @returns dataframe, containing shuffled zeitgeber times.
+#' @param index represents in this case which permutation of the shuffle is being generated.
+#' @param zeitgeber_times represents the dataframe containing the zeitgeber times of death of the subjects.
+#' @examples
+#' create_shuffled_TOD(index=1, out_df=some_output_dataframe, zeitgeber_times=some_dataframe_with_TOD
+create_shuffled_TOD <- function(index, zeitgeber_times) {
+  set.seed(index)
+  return(data.frame(sample(zeitgeber_times)))
+}
+print('RhythmicityCode.R: Running create_shuffled_TOD function in parallel...')
+
+cl <- makeClusterPSOCK(n.cores)
+# Parallelized create_shuffled_TOD function in the range from 1:permutations
+clusterExport(cl, c("create_shuffled_TOD", "permutations", "zeitgeber_times"))
+shuffleTOD_df <- do.call(cbind,parLapply(cl, X=1:permutations, fun=create_shuffled_TOD, zeitgeber_times))
+stopCluster(cl)
+
+#' generate_null_data_filenames()
+#' Generate the filenames for the null_data files. 
+#' @returns string, containing the filename of the null_data at position 'index'.
+#' @param index represents which permutation the null_data is being produced for.
+#' @param groupName represents the group (e.g. Control, Old, Young, etc.) that these files are being produced for.
+#' @examples
+#' generate_null_data_filenames(index=1, groupName="Control")
+generate_null_data_filenames <- function(index, groupName) {
+  return(paste('null_', groupName, '_', index, '.rdata', sep=''))
+}
+
+cl <- makeClusterPSOCK(n.cores)
+# Parallelizing execution of the generate_null_data_filenames function over the range 1:permutations
+clusterExport(cl, c("generate_null_data_filenames", "groupName"))
+null_para_files <- do.call(rbind, parLapply(cl, X=1:permutations, fun=generate_null_data_filenames, groupName))
+stopCluster(cl)
+
+#' generate_null_data_parameters()
+#' Generate the null parameters for each permutation's shuffled time of deaths. 
+#' @returns dataframe, containing a row of sinusoid parameters (amplitude, phase, offset, peak, and R2).
+#' @param index represents which gene the sinusoid parameters are being generated for.
+#' @param permutation represents which permutation of the time of death shuffling is being used to generate parameters.
+#' @param gene_expression_dataframe represents the dataframe with gene expression data inside
+#' @param curve_fitting_function represents the function that is being used to generate the null_parameters.
+#' @examples
+#' output_row <- generate_null_data_parameters(index=1, permutation=2, shuffled_TOD_dataframe=shuffleTOD_df, gene_expression_dataframe=gene_expression_df, curve_fitting_function=fitSinCurve)
+generate_null_data_parameters <- function(index, permutation, shuffled_TOD_dataframe, gene_expression_dataframe, curve_fitting_function) {
+  out <- curve_fitting_function(xx=shuffled_TOD_dataframe[,permutation], observed=unlist(gene_expression_df[index,]))
+  out_row <- data.frame(out$A, out$phase, out$offset, out$peak, out$R2)
+  return(out_row)
+}
+
+cl <- makeClusterPSOCK(n.cores)
+# Parallelizing the generate_null_data_parameters function across the range 1:num_expressed_genes to append to dataframe null_pare
+clusterExport(cl, c("generate_null_data_parameters", "shuffleTOD_df", "gene_expression_dataframe", "fitSinCurve"))
+for(permutation in 1:permutations) {
+  clusterExport(cl, "permutation")
+  null_pare <- do.call(rbind, parLapply(cl, X=1:num_expressed_genes, fun=generate_null_data_filenames, permutations, shuffleTOD_df, gene_expression_dataframe, fitSinCurve))
+  colnames(null_pare) <- c("A", "phase", "offset", "peak", "R2")
+  save(null_pare, file=null_para_files[permutation,])
+}
+stopCluster(cl)
+setwd('..')
+print('RhythmicityCode.R: Routine complete.')
+
+
+
