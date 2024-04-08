@@ -1,6 +1,6 @@
 print("main.R: Starting...")
 # Package names
-packages <- c("parallelly", "parallel", "minpack.lm", "lme4", "BiocManager", "qvalue")
+packages <- c("parallelly", "parallel", "minpack.lm", "BiocManager")
 # Install packages that aren't already there
 installed_packages <- packages %in% rownames(installed.packages())
 if (any(installed_packages == FALSE)) {
@@ -41,8 +41,6 @@ subject_mappings<-match(row.names(cohort_data), new.dat.ls)
 
 expression_data_new<-expression_data[,c(subject_mappings)]
 write.csv(expression_data_new, "./Data/revised_expression_data.csv")
-print("main.R: Installing/verifying packages...")
-
 print("main.R: Initializing External Functions...")
 source("./R/fitSinCurve.R")
 source("./R/Curve_Drawing.R")
@@ -53,4 +51,3 @@ system.time(source("./R/RhythmicityCode.R"))
 # source("./R/DE.R")
 print("main.R: Routine Complete.\nSee Results in the `./Results/` folder.")
 
-system('R ./R/main.R && echo "Workflow complete" | mail -s "From workflow MACBOOK" 5039130381@sms.cricketwireless.net')
