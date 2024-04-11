@@ -378,9 +378,20 @@ for(variable in c('R2', 'A', 'phase', 'offset')) {
 }
 stopCluster(cl)
 
+# Calculate p-values with two-sample independent t-test
+
+# Ensure that null distributions are normally distributed
+R2shiftNULL <- sapply(R2changeNULL, function(x) shapiro.test(x)$p.value)
+AshiftNULL <- sapply(AshiftNULL, function(x) shapiro.test(x)$p.value)
+phaseshiftNULL <- sapply(phaseshiftNULL, function(x) shapiro.test(x)$p.value)
+offsetshiftNULL <- sapply(intshiftNULL, function(x) shapiro.test(x)$p.value)
+
+if (any(R2shiftNULL < 0.05) | any(AshiftNULL < 0.05) | any(phaseshiftNULL < 0.05) | any(offsetshiftNULL < 0.05)) {
+  warning('Warning: Null distributions are not normally distributed.')
+}
 p <- nrow(observed_para_o)
 R2gainPvalue <- 1-rank(R2shiftNULL)[1:p]/length(R2shiftNULL) 
-R2losePvalue <- rank(R2shiftNULL)[1:p]/length(R2shiftNULL) 
+R2losePvalue <- rank(R2shiftNULL)[1:p]/length(R2shiftNULL)
 AshiftPvalue <- 1 - rank(AshiftNULL)[1:p]/length(AshiftNULL)
 phasePvalue <- 1 - rank(phaseshiftNULL)[1:p]/length(phaseshiftNULL)
 offsetshiftPvalue <- 1 - rank(offsetshiftNULL)[1:p]/length(offsetshiftNULL)
