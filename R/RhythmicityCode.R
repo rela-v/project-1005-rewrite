@@ -381,13 +381,13 @@ stopCluster(cl)
 # Calculate p-values with two-sample independent t-test
 
 # Ensure that null distributions are normally distributed
-R2shiftNULL <- sapply(R2changeNULL, function(x) shapiro.test(x)$p.value)
-AshiftNULL <- sapply(AshiftNULL, function(x) shapiro.test(x)$p.value)
-phaseshiftNULL <- sapply(phaseshiftNULL, function(x) shapiro.test(x)$p.value)
-offsetshiftNULL <- sapply(intshiftNULL, function(x) shapiro.test(x)$p.value)
+shapiro_test_R2shiftNULL <- shapiro.test(unlist(R2shiftNULL)[which(!is.na(unlist(R2shiftNULL)))][1:1000])
+shapiro_test_AshiftNULL <- shapiro.test(unlist(AshiftNULL)[which(!is.na(unlist(AshiftNULL)))][1:1000])
+shapiro_test_phaseshiftNULL <- shapiro.test(unlist(phaseshiftNULL)[which(!is.na(unlist(phaseshiftNULL)))][1:1000])
+shapiro_test_offsetshiftNULL <- shapiro.test(unlist(offsetshiftNULL)[which(!is.na(unlist(offsetshiftNULL)))][1:1000])
 
-if (any(R2shiftNULL < 0.05) | any(AshiftNULL < 0.05) | any(phaseshiftNULL < 0.05) | any(offsetshiftNULL < 0.05)) {
-  warning('Warning: Null distributions are not normally distributed.')
+if (any(shapiro_test_R2shiftNULL < 0.05) | any(shapiro_test_AshiftNULL < 0.05) | any(shapiro_test_phaseshiftNULL < 0.05) | any(shapiro_test_offsetshiftNULL < 0.05)) {
+  print('Warning: Null distributions are not normally distributed.')
 }
 p <- nrow(observed_para_o)
 R2gainPvalue <- 1-rank(R2shiftNULL)[1:p]/length(R2shiftNULL) 
