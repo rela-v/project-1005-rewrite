@@ -192,7 +192,7 @@ null_para_file <- paste('null_', groupName, '.rdata', sep='')
 save(null_para, file=null_para_file)
 setwd('..')
 para_R2_pool <- cbind(observed_para_c$R2, null_para$null_para_R2)
-R2Rank_para <- 1 - (rank(para_R2_pool)[1:length(observed_para_c$R2)] - 0.5)/length(para_R2_pool)
+R2Rank_para <- wilcox.test(para_R2_pool[,1], para_R2_pool[,2])$p.value
 observed_para_c$pvalue <- R2Rank_para
 observed_para_c$qvalue <- p.adjust(observed_para_c$pvalue, 'BH')
 observed_para_c_sorted <- observed_para_c[order(observed_para_c$pvalue),]
@@ -345,60 +345,4 @@ for(variable in c('A', 'phase', 'offset', 'peak', 'R2')) {
 }
 stopCluster(cl)
 
-# Get null_para_files for young and old,
-#' compareGroups()
-#' Comparison of variable between two groups 
-#' @returns list of values of groups 1 and 2 fo\ the variable in question.
-#' @param permutation represents the number of the permutation in question.
-#' @param group1 represents the first group in the comparison.
-#' @param group2 represents the second group in the comparison.
-#' @param variable represents the variable to be grabbed.
-#' @examples
-#' compareGroups(1, 'old', 'young', variable)
-compareGroups <- function(permutation, group1, group2, variable) {
-  group1_ret <- get(load(paste('./null_', group1, '_', permutation, '.rdata', sep='')))[variable]
-  group2_ret <- get(load(paste('./null_', group2, '_', permutation, '.rdata', sep='')))[variable] 
-  if(variable=='R2') {
-  group_rets  <-  group1_ret-group2_ret
-  } else if(variable=='A') {
-  group_rets <- abs(abs(group1_ret) - abs(group2_ret))
-  } else if(variable=='phase') {
-  group_rets <- pmin(abs(group1_ret - group2_ret),24 - abs(group1_ret - group2_ret))
-  } else if(variable=='offset') {
-  group_rets <- abs(group1_ret - group2_ret)
-  }
-  return(group_rets)
-}
-
-cl <- makeClusterPSOCK(n.cores)
-for(variable in c('R2', 'A', 'phase', 'offset')) {
-  print(variable)
-  clusterExport(cl, c("variable", "compareGroups", "permutations"))
-  assign(paste(variable, 'shiftNULL', sep=''), do.call(cbind, parLapply(cl, X=1:permutations, fun=compareGroups, group1='old', group2='young', variable=variable)))
-}
-stopCluster(cl)
-
-# Calculate p-values with two-sample independent t-test
-
-# Ensure that null distributions are normally distributed
-shapiro_test_R2shiftNULL <- shapiro.test(unlist(R2shiftNULL)[which(!is.na(unlist(R2shiftNULL)))][1:1000])
-shapiro_test_AshiftNULL <- shapiro.test(unlist(AshiftNULL)[which(!is.na(unlist(AshiftNULL)))][1:1000])
-shapiro_test_phaseshiftNULL <- shapiro.test(unlist(phaseshiftNULL)[which(!is.na(unlist(phaseshiftNULL)))][1:1000])
-shapiro_test_offsetshiftNULL <- shapiro.test(unlist(offsetshiftNULL)[which(!is.na(unlist(offsetshiftNULL)))][1:1000])
-
-if (any(shapiro_test_R2shiftNULL < 0.05) | any(shapiro_test_AshiftNULL < 0.05) | any(shapiro_test_phaseshiftNULL < 0.05) | any(shapiro_test_offsetshiftNULL < 0.05)) {
-  print('Warning: Null distributions are not normally distributed.')
-}
-p <- nrow(observed_para_o)
-R2gainPvalue <- 1-rank(R2shiftNULL)[1:p]/length(R2shiftNULL) 
-R2losePvalue <- rank(R2shiftNULL)[1:p]/length(R2shiftNULL)
-AshiftPvalue <- 1 - rank(AshiftNULL)[1:p]/length(AshiftNULL)
-phasePvalue <- 1 - rank(phaseshiftNULL)[1:p]/length(phaseshiftNULL)
-offsetshiftPvalue <- 1 - rank(offsetshiftNULL)[1:p]/length(offsetshiftNULL)
-result2<-data.frame(cbind(R2gainPvalue, R2losePvalue, AshiftPvalue, phasePvalue, offsetshiftPvalue))
-row.names(result2)<-observed_para_o$genes
-result2_sorted<-result2[order(result2$R2gainPvalue, decreasing = FALSE), ]
-setwd("../")
-write.csv(result2_sorted, "./Results/Rhythmicity/Example_Result2.csv")
-
-print('RhythmicityCode.R: Routine complete.')
+setwd('..')

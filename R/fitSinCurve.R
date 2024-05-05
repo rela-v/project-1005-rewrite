@@ -13,7 +13,7 @@ fitSinCurve <- function(xx, observed, parStart=parStartVal) {
   }
   # print("fitSinCurve.R: Fitting sinusoid using LM algorithm.")
   # output of the LM algorithm's sinusoidal fit
-  nls.out <- nls.lm(par=parStartVal, fn = residFun, observed = observed, xx = xx)
+  nls.out <- nls.lm(par=parStartVal, fn = residFun, observed = observed, xx = xx)  
   # get parameters of the fitted function
   apar <- nls.out$par
   
@@ -37,5 +37,5 @@ fitSinCurve <- function(xx, observed, parStart=parStartVal) {
   R2 <- 1 - SSE/SST
   res <- list(A=A, phase=phase, offset=offset, peak=peak, R2=R2)
   # print("fitSinCurve.R: Protocol complete.")
-  return(res)
+  return(list(res, summary(nls.out)))
 }
