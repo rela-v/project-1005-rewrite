@@ -33,6 +33,7 @@ colnames(expression_data) <- c(rownames(cohort_data))
 expression_data_subjects<-rownames(cohort_data)
 # Create an empty vector for edited expression_data_subjects vector
 print("main.R: Initializing External Functions...")
+source('./R/load_data.R')
 source("./R/variance_partitioning_analysis.R")
 # system.time(source("./R/RhythmicityCode.R"))
 # source('./R/Curve_Drawing.R')

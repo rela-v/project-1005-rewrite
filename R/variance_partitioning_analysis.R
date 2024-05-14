@@ -28,6 +28,7 @@ formula_varpart_SZ <- ~ age + (1 | Sex) + (1 | DDx) + (1 | psychosis) + (1 | sui
   (1 | ethanol.severity) + (1 | substance.abuse.severity) + (1 | smoking.history) + (1 | Race) + ZT + (1 | hemisphere) +
   brain.weight
 formula_varpart_BD_MDD <- ~ age + (1 | Sex) + (1 | DDx) + PMI + pH + (1 | ethanol.severity) + (1 | substance.abuse.severity) + (1 | smoking.history) + (1 | Race) + ZT + (1 | hemisphere)
+formula_control <- ~ (1 | Race) + ZT + (1 | Sex) + age + (1 | smoking.history) + pH + brain.weight + PMI
 
 # cordata <- canCorPairs(form, cohort_data)
 # plotCorrMatrix(cordata)
@@ -57,7 +58,7 @@ multicoreParam <- MulticoreParam(workers = availableCores())
 
 data  <- grab_metadata_expression_data("C")
 plotVarPartition_for_disease <- function(condition) {
-  varPart <- fitExtractVarPartModel(data[[2]], formula_varpart_BD_MDD, data[[1]], BPPARAM= multicoreParam)
+  varPart <- fitExtractVarPartModel(data[[2]], formula_control, data[[1]], BPPARAM= multicoreParam)
   vp <- sortCols(varPart)
   percentbarplot <- plotPercentBars(vp[1:10, ], ggtitle="Variance Explained by Top 10 Variables")
   varpartplot <- plotVarPart(vp, ggtitle=paste("Variance Explained by Top 10 Variables in ", condition))
