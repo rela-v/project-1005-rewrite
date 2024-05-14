@@ -37,5 +37,5 @@ fitSinCurve <- function(xx, observed, parStart=parStartVal) {
   R2 <- 1 - SSE/SST
   res <- list(A=A, phase=phase, offset=offset, peak=peak, R2=R2)
   # print("fitSinCurve.R: Protocol complete.")
-  return(list(res, summary(nls.out)))
+  return(res)
 }

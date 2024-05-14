@@ -48,9 +48,6 @@ set.seed(123)
 print('RhythmicityCode.R: Defining generate_observed_parameters function...')
 generate_observed_parameters <- function(index, num_expressed_genes, gene_expression_dataframe, zeitgeber_times) {
   out <- fitSinCurve(xx=as.numeric(zeitgeber_times), observed=as.numeric(gene_expression_dataframe[index,]))
-  model_sum <- out[[2]]
-  print(model_sum)
-  out <- out[[1]]
   out_row <- data.frame(Symbols=Symbols[index], A=out$A, phase=out$phase, offset=out$offset, peak=out$peak, R2=out$R2)
   return(out_row)
 }
@@ -68,13 +65,14 @@ observed_para_c_MDD <- generate_observed_parameters(index=1, num_expressed_genes
 library(gtools)
 # Generate permutations of the observed parameters
 print('RhythmicityCode.R: Defining generate_permutations function...')
-generate_permutations <- function(observed_parameters, num_permutations) {
-  combinations <- data.frame(matrix(ncol=5, nrow=num_permutations))
-  colnames(combinations) <- c("A", "phase", "offset", "peak", "R2")
+generate_permutations <- function(observed_parameters, num_combinations) {
+  combinations <- data.frame(matrix(ncol=1, nrow=num_combinations))
+  colnames(combinations) <- c("R2")
   for(i in 1:num_combinations) {
-    combinations[i,] <- gtools::combinations(, m, tVec2, repeats.allowed = TRUE)
+    # Sample with replacement
+    sample <- observed_parameters[sample(1:nrow(observed_parameters), replace=TRUE),]
   }
-  return(permutations)
+  return(combinations)
 }
 
 # Generate permutations for the observed parameters
@@ -87,10 +85,13 @@ permutations_MDD <- generate_permutations(expression_data_MDD, num_permutations)
 
 # Generate null parameters for the observed parameters
 print('RhythmicityCode.R: Defining generate_null_parameters function...')
-generate_null_parameters <- function(permutations, model_fn) {
+generate_null_parameters <- function(permutations, fitSinCurve) {
   null_parameters <- data.frame(matrix(ncol=1, nrow=nrow(permutations)))
+  colnames(null_parameters) <- c("R2")
   for(i in 1:nrow(permutations)) {
-    null_parameters[i,] <- model_fn(permutations[i,])$R2
+    #Fit linear model
+    
+    print(out)
   }
   return(null_parameters)
 }
@@ -105,25 +106,16 @@ null_parameters_MDD <- generate_null_parameters(permutations_MDD, fitSinCurve)
 # Generate p-values for the observed parameters
 print('RhythmicityCode.R: Defining generate_p_values function...')
 generate_p_values <- function(observed_parameters, permuted_parameters) {
-
-  p_value <- (permuted_parameters[which(permuted_parameters >= observed_parameters)])/length(permuted_parameters)
-  return(p_value)
+  p_value <- length(permuted_parameters[permuted_parameters$R2 >= observed_parameters$R2,])/nrow(permuted_parameters)
+  print(paste("P-value: ", p_value))
 }
 
 # Generate p-values for the observed parameters
 print('RhythmicityCode.R: Generating p-values for the observed parameters...')
-R2_permuted_values_C <- generate_p_values(observed_para_c_C$R2, null_parameters_C)
-R2_permuted_values_SZ <- generate_p_values(observed_para_c_SZ$R2, null_parameters_SZ)
-R2_permuted_values_BD <- generate_p_values(observed_para_c_BD$R2, null_parameters_BD)
-R2_permuted_values_MDD <- generate_p_values(observed_para_c_MDD$R2, null_parameters_MDD)
-
-# Generate p-values for the observed parameters
-print('RhythmicityCode.R: Defining generate_circadian_drawings function...')
-
-p_value_C <- length((which(R2_permuted_values_C >= observed_para_c_C$R2)==TRUE))/length(R2_permuted_values_C)
-p_value_SZ <- length((which(R2_permuted_values_SZ >= observed_para_c_SZ$R2)==TRUE))/length(R2_permuted_values_SZ)
-p_value_BD <- length((which(R2_permuted_values_BD >= observed_para_c_BD$R2)==TRUE))/length(R2_permuted_values_BD)
-p_value_MDD <- length((which(R2_permuted_values_MDD >= observed_para_c_MDD$R2)==TRUE))/length(R2_permuted_values_MDD)
+R2_permuted_values_C <- generate_p_values(observed_para_c_C, null_parameters_C)
+R2_permuted_values_SZ <- generate_p_values(observed_para_c_SZ, null_parameters_SZ)
+R2_permuted_values_BD <- generate_p_values(observed_para_c_BD, null_parameters_BD)
+R2_permuted_values_MDD <- generate_p_values(observed_para_c_MDD, null_parameters_MDD)
 
 print('RhythmicityCode.R: Defining generate_circadian_drawings function...')
 # Generate scatter plots

@@ -29,8 +29,8 @@ formula_varpart_SZ <- ~ age + (1 | Sex) + (1 | DDx) + (1 | psychosis) + (1 | sui
   brain.weight
 formula_varpart_BD_MDD <- ~ age + (1 | Sex) + (1 | DDx) + PMI + pH + (1 | ethanol.severity) + (1 | substance.abuse.severity) + (1 | smoking.history) + (1 | Race) + ZT + (1 | hemisphere)
 
-cordata <- canCorPairs(form, cohort_data)
-plotCorrMatrix(cordata)
+# cordata <- canCorPairs(form, cohort_data)
+# plotCorrMatrix(cordata)
 
 # Get variance partitioning plot
 
@@ -54,7 +54,8 @@ get_levels_per_variable <- function(cohort_data_filtered) {
 library(parallelly)
 library(parallel)
 multicoreParam <- MulticoreParam(workers = availableCores())
-data <- grab_metadata_expression_data("MDD")
+
+data  <- grab_metadata_expression_data("C")
 plotVarPartition_for_disease <- function(condition) {
   varPart <- fitExtractVarPartModel(data[[2]], formula_varpart_BD_MDD, data[[1]], BPPARAM= multicoreParam)
   vp <- sortCols(varPart)
@@ -66,7 +67,7 @@ plotVarPartition_for_disease <- function(condition) {
   save(varPart, file=paste("./Results/", condition, "/variance_partitioning_", condition, ".RData", sep=''))
 }
 
-for (condition in c("MDD")) {
+for (condition in c("C")) {
   plotVarPartition_for_disease(condition)
 }
 
