@@ -48,7 +48,7 @@ set.seed(123)
 print('RhythmicityCode.R: Defining generate_observed_parameters function...')
 generate_observed_parameters <- function(index, num_expressed_genes, gene_expression_dataframe, zeitgeber_times) {
   out <- fitSinCurve(xx=as.numeric(zeitgeber_times), observed=as.numeric(gene_expression_dataframe[index,]))
-  out_row <- data.frame(Symbols=Symbols[index], A=out$A, phase=out$phase, offset=out$offset, peak=out$peak, R2=out$R2)
+  out_row <- data.frame(R2=out$R2)
   return(out_row)
 }
 
@@ -63,6 +63,7 @@ print('RhythmicityCode.R: Generating observed parameters for SKA2 gene for MDD..
 observed_para_c_MDD <- generate_observed_parameters(index=1, num_expressed_genes=nrow(expression_data_MDD), gene_expression_dataframe=expression_data_MDD, zeitgeber_times=cohort_data_MDD$ZT)
 
 library(gtools)
+
 # Generate permutations of the observed parameters
 print('RhythmicityCode.R: Defining generate_permutations function...')
 generate_permutations <- function(observed_parameters, num_combinations) {
