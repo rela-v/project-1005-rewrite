@@ -18,8 +18,8 @@ circadianDrawing <- function(tod, expr, apar, labels, specInfo=NULL){
   labelColor <- as.numeric(factor(labels))
   
   plot(tod,expr,col=labelColor, pch=16,cex=2,
-       main=amain,xlim=c(-6,18),
-       xlab='TOD',ylab='Expression', ylim=c(0,1000))
+       main=amain, xlim=c(-6, 18), ylim=c(-300, 200),
+       xlab='TOD',ylab='Expression')
   smoothingSpline = smooth.spline(x=times, y=pred, spar=0.35)
   lines(smoothingSpline,col='red',lwd=4)
   box(which = "plot", lty = "solid",lwd=3)

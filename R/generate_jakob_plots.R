@@ -14,6 +14,7 @@ grab_metadata_expression_data <- function(relevant_condition) {
   return(list(filtered_cohort_data, filtered_expression_data))
 }
 
+multicoreParam <- MulticoreParam(workers = availableCores())
 data_C <- grab_metadata_expression_data("C")
 data_SZ <- grab_metadata_expression_data("SZ")
 data_BD <- grab_metadata_expression_data("BD")
@@ -46,129 +47,77 @@ set.seed(123)
 #' @examples
 #' out_pars <- generate_observed_parameters(index=1, num_expressed_genes=10345, gene_expression_dataframe=df_with_gene_data, zeitgeber_time=df_with_ZT_data
 print('RhythmicityCode.R: Defining generate_observed_parameters function...')
-generate_observed_parameters <- function(index, num_expressed_genes, gene_expression_dataframe, zeitgeber_times) {
-  out <- fitSinCurve(xx=as.numeric(zeitgeber_times), observed=as.numeric(gene_expression_dataframe[index,]))
-  out_row <- data.frame(R2=out$R2)
+generate_observed_parameters <- function(index, condition, num_expressed_genes, gene_expression_dataframe, zeitgeber_times) {
+    covariate_adjusted_observations_filename <- paste("./Results/variance_partitioning_plots/", condition, "/residualmodelfit_", condition, ".RData", sep='')
+  load(covariate_adjusted_observations_filename)
+  out <- fitSinCurve(xx=as.numeric(zeitgeber_times), observed=as.numeric(residual))
+  out_row <- data.frame(A=out$A, phase=out$phase, offset=out$offset, peak=out$peak, R2=out$R2) 
   return(out_row)
 }
 
 # Generate observed parameters for the SKA2 gene for each condition
 print('RhythmicityCode.R: Generating observed parameters for SKA2 gene for control...')
-observed_para_c_C <- generate_observed_parameters(index=1, num_expressed_genes=nrow(expression_data_C), gene_expression_dataframe=expression_data_C, zeitgeber_times=cohort_data_C$ZT)
+covariate_adjusted_observations_filename <- paste("./Results/variance_partitioning_plots/", "C", "/residualmodelfit_", "C", ".RData", sep='')
+load(covariate_adjusted_observations_filename)
+observed_para_c_C <- generate_observed_parameters(index=1, condition="C", num_expressed_genes=nrow(residual), gene_expression_dataframe=residual, zeitgeber_times=cohort_data_C$ZT)
 print('RhythmicityCode.R: Generating observed parameters for SKA2 gene for SZ...')
-observed_para_c_SZ <- generate_observed_parameters(index=1, num_expressed_genes=nrow(expression_data_SZ), gene_expression_dataframe=expression_data_SZ, zeitgeber_times=cohort_data_SZ$ZT)
+covariate_adjusted_observations_filename <- paste("./Results/variance_partitioning_plots/", "SZ", "/residualmodelfit_", "SZ", ".RData", sep='')
+load(covariate_adjusted_observations_filename)
+observed_para_c_SZ <- generate_observed_parameters(index=1, condition="SZ", num_expressed_genes=nrow(residual), gene_expression_dataframe=residual, zeitgeber_times=cohort_data_SZ$ZT)
 print('RhythmicityCode.R: Generating observed parameters for SKA2 gene for BD...')
-observed_para_c_BD <- generate_observed_parameters(index=1, num_expressed_genes=nrow(expression_data_BD), gene_expression_dataframe=expression_data_BD, zeitgeber_times=cohort_data_BD$ZT)
+covariate_adjusted_observations_filename <- paste("./Results/variance_partitioning_plots/", "BD", "/residualmodelfit_", "BD", ".RData", sep='')
+load(covariate_adjusted_observations_filename)
+observed_para_c_BD <- generate_observed_parameters(index=1, condition="BD", num_expressed_genes=nrow(residual), gene_expression_dataframe=residual, zeitgeber_times=cohort_data_BD$ZT)
 print('RhythmicityCode.R: Generating observed parameters for SKA2 gene for MDD...')
-observed_para_c_MDD <- generate_observed_parameters(index=1, num_expressed_genes=nrow(expression_data_MDD), gene_expression_dataframe=expression_data_MDD, zeitgeber_times=cohort_data_MDD$ZT)
+covariate_adjusted_observations_filename <- paste("./Results/variance_partitioning_plots/", "MDD", "/residualmodelfit_", "MDD", ".RData", sep='')
+load(covariate_adjusted_observations_filename)
+observed_para_c_MDD <- generate_observed_parameters(index=1, condition="MDD", num_expressed_genes=nrow(residual), gene_expression_dataframe=residual, zeitgeber_times=cohort_data_MDD$ZT)
 
-library(gtools)
-
-# Generate permutations of the observed parameters
-print('RhythmicityCode.R: Defining generate_permutations function...')
-generate_permutations <- function(observed_parameters, num_combinations) {
-  combinations <- data.frame(matrix(ncol=1, nrow=num_combinations))
-  colnames(combinations) <- c("R2")
-  for(i in 1:num_combinations) {
-    # Sample with replacement
-    sample <- observed_parameters[sample(1:nrow(observed_parameters), replace=TRUE),]
-  }
-  return(combinations)
-}
-
-# Generate permutations for the observed parameters
-print('RhythmicityCode.R: Generating permutations for the observed parameters...')
-num_permutations <- 1000
-permutations_C <- generate_permutations(expression_data_C, num_permutations)
-permutations_SZ <- generate_permutations(expression_data_SZ, num_permutations)
-permutations_BD <- generate_permutations(expression_data_BD, num_permutations)
-permutations_MDD <- generate_permutations(expression_data_MDD, num_permutations)
-
-# Generate null parameters for the observed parameters
-print('RhythmicityCode.R: Defining generate_null_parameters function...')
-generate_null_parameters <- function(permutations, fitSinCurve) {
-  null_parameters <- data.frame(matrix(ncol=1, nrow=nrow(permutations)))
-  colnames(null_parameters) <- c("R2")
-  for(i in 1:nrow(permutations)) {
-    #Fit linear model
-    
-    print(out)
-  }
-  return(null_parameters)
-}
-
-# Generate null parameters for the observed parameters
-print('RhythmicityCode.R: Generating null parameters for the observed parameters...')
-null_parameters_C <- generate_null_parameters(permutations_C, fitSinCurve)
-null_parameters_SZ <- generate_null_parameters(permutations_SZ, fitSinCurve)
-null_parameters_BD <- generate_null_parameters(permutations_BD, fitSinCurve)
-null_parameters_MDD <- generate_null_parameters(permutations_MDD, fitSinCurve)
-
-# Generate p-values for the observed parameters
-print('RhythmicityCode.R: Defining generate_p_values function...')
-generate_p_values <- function(observed_parameters, permuted_parameters) {
-  p_value <- length(permuted_parameters[permuted_parameters$R2 >= observed_parameters$R2,])/nrow(permuted_parameters)
-  print(paste("P-value: ", p_value))
-}
-
-# Generate p-values for the observed parameters
-print('RhythmicityCode.R: Generating p-values for the observed parameters...')
-R2_permuted_values_C <- generate_p_values(observed_para_c_C, null_parameters_C)
-R2_permuted_values_SZ <- generate_p_values(observed_para_c_SZ, null_parameters_SZ)
-R2_permuted_values_BD <- generate_p_values(observed_para_c_BD, null_parameters_BD)
-R2_permuted_values_MDD <- generate_p_values(observed_para_c_MDD, null_parameters_MDD)
 
 print('RhythmicityCode.R: Defining generate_circadian_drawings function...')
 # Generate scatter plots
 gene_names <- c("SKA2")
 number_of_top_genes <- nrow(top.control)
-data_labels <- cohort_data$suicide
-special_information <- "Control"
 system("mkdir -p ./Results/Rhythmicity/C/PDF")
 
-#' generate_circadian_drawings() 
-#' Generate the drawings of the observed circadian rhythmicity of the genes in question
-#' @returns NULL, produces PDFs in the './Results/Rhythmicity/PDF/' folder.
-#' @param index represents the number of the gene that will be analyzed.
-#' @param top_control_dataframe represents the dataframe of the most rhythmic genes analyzed (based on R2).
-#' @param circadian_drawing_function represents the function used to produce the drawings. Customizable in './R/Curve_Drawing.R.'
-#' @param cohort_data_dataframe represents the dataframe of cohort metadata used in the input.
-#' @param gene_expression_dataframe represents the dataframe of gene expression values.
-#' @param gene_names represents the names of the genes contained in the gene_expression_dataframe.
-#' @param data_labels represents the special data labels included in the circadian_drawing_function.
-#' @param special_information represents, in this case, the group of the genes being analyzed.
-#' @examples
-#' generate_circadian_drawings(index=1, top_control_dataframe=top_control_genes_df, circadian_drawing_function=circadianDrawing_fn, cohort_data_dataframe=cohort_df, gene_expression_dataframe=gene_expression_df, gene_names=genes, data_labels=labels, special_information="Control") 
-
-generate_circadian_drawings <- function(index, top_control_dataframe, circadian_drawing_function, zeitgeber_times, gene_expression_dataframe, gene_names, data_labels, special_information) {
-  a_gene <- "SKA2" 
-  fileName <- paste('./Results/Rhythmicity/PDF/Top_Control', a_gene, '.pdf', sep='')
-  pdf(fileName)
-  circadian_drawing_function(tod=zeitgeber_times, expr=gene_expression_dataframe[gene_names[index],], apar=top_control_dataframe[index,], labels=data_labels, specInfo=special_information)
-  dev.off()
-}
 print("Done")
 dir.create('./Results/Rhythmicity/PDF/Control')
-fileName_C <- paste('./Results/Rhythmicity/PDF/Control', '_SKA2_', '.pdf', sep='')
+fileName_C <- paste('./Results/Rhythmicity/PDF/Control', '_SKA2_', '.png', sep='')
 dir.create('./Results/Rhythmicity/PDF/SZ')
-fileName_SZ <- paste('./Results/Rhythmicity/PDF/SZ', '_SKA2_', '.pdf', sep='')
+fileName_SZ <- paste('./Results/Rhythmicity/PDF/SZ', '_SKA2_', '.png', sep='')
 dir.create('./Results/Rhythmicity/PDF/BD')
-fileName_BD <- paste('./Results/Rhythmicity/PDF/BD', '_SKA2_', '.pdf', sep='')
+fileName_BD <- paste('./Results/Rhythmicity/PDF/BD', '_SKA2_', '.png', sep='')
 dir.create('./Results/Rhythmicity/PDF/MDD')
-fileName_MDD <- paste('./Results/Rhythmicity/PDF/MDD', '_SKA2_', '.pdf', sep='')
-pdf(fileName_C)
-C_ZT_drawing <- circadianDrawing(tod=cohort_data_C$ZT, expr=expression_data_C[1,], apar=observed_para_c_C, labels=cohort_data_C$suicide, specInfo="Control")
+fileName_MDD <- paste('./Results/Rhythmicity/PDF/MDD', '_SKA2_', '.png', sep='')
+
+print('RhythmicityCode.R: Generating circadian drawings for SKA2 gene for control...')
+covariate_adjusted_observations_filename <- paste("./Results/variance_partitioning_plots/", "C", "/residualmodelfit_", "C", ".RData", sep='')
+load(covariate_adjusted_observations_filename)
+print(residual)
+png(fileName_C)
+circadianDrawing(tod=cohort_data_C$ZT, expr=residual, apar=observed_para_c_C, labels=cohort_data_C$suicide, specInfo=special_information)
 dev.off()
-pdf(fileName_SZ)
-SZ_ZT_drawing <- circadianDrawing(tod=cohort_data_SZ$ZT, expr=expression_data_SZ[1,], apar=observed_para_c_SZ, labels=cohort_data_SZ$suicide, specInfo="SZ")
+print('RhythmicityCode.R: Generating circadian drawings for SKA2 gene for SZ...')
+covariate_adjusted_observations_filename <- paste("./Results/variance_partitioning_plots/", "SZ", "/residualmodelfit_", "SZ", ".RData", sep='')
+load(covariate_adjusted_observations_filename)
+png(fileName_SZ)
+circadianDrawing(tod=cohort_data_SZ$ZT, expr=residual, apar=observed_para_c_SZ, labels=cohort_data_SZ$suicide, specInfo=special_information)
 dev.off()
-pdf(fileName_BD)
-BD_ZT_drawing <- circadianDrawing(tod=cohort_data_BD$ZT, expr=expression_data_BD[1,], apar=observed_para_c_BD, labels=cohort_data_BD$suicide, specInfo="BD")
+print('RhythmicityCode.R: Generating circadian drawings for SKA2 gene for BD...')
+covariate_adjusted_observations_filename <- paste("./Results/variance_partitioning_plots/", "BD", "/residualmodelfit_", "BD", ".RData", sep='')
+load(covariate_adjusted_observations_filename)
+png(fileName_BD)
+circadianDrawing(tod=cohort_data_BD$ZT, expr=residual, apar=observed_para_c_BD, labels=cohort_data_BD$suicide, specInfo=special_information)
 dev.off()
-pdf(fileName_MDD)
-MDD_ZT_drawing <- circadianDrawing(tod=cohort_data_MDD$ZT, expr=expression_data_MDD[1,], apar=observed_para_c_MDD, labels=cohort_data_MDD$suicide, specInfo="MDD")
+print('RhythmicityCode.R: Generating circadian drawings for SKA2 gene for MDD...')
+covariate_adjusted_observations_filename <- paste("./Results/variance_partitioning_plots/", "MDD", "/residualmodelfit_", "MDD", ".RData", sep='')
+load(covariate_adjusted_observations_filename)
+png(fileName_MDD)
+circadianDrawing(tod=cohort_data_MDD$ZT, expr=residual, apar=observed_para_c_MDD, labels=cohort_data_MDD$suicide, specInfo=special_information)
 dev.off()
 
+
 print('generate_jakob_plots.R: Routine complete.')
+
 
 
