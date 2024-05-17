@@ -25,10 +25,8 @@ cohort_data_SZ <- data_SZ[[1]]
 cohort_data_BD <- data_BD[[1]]
 cohort_data_MDD <- data_MDD[[1]]
 
-expression_data_C <- data_C[[2]][15150,]
-expression_data_SZ <- data_SZ[[2]][15150,]
-expression_data_BD <- data_BD[[2]][15150,]
-expression_data_MDD <- data_MDD[[2]][15150,]
+
+zeitgeber_times_all <- c(cohort_data_C$ZT, cohort_data_SZ$ZT, cohort_data_BD$ZT, cohort_data_MDD$ZT)
 
 
 set.seed(123)
@@ -36,22 +34,10 @@ set.seed(123)
 `nls.lm` <- minpack.lm::nls.lm
 # SKA2 Index  <- 15150
 
-
-#' generate_observed_parameters()
-#' Generate the parameters for the fitted sinusoid observed in the expressed genes over time 
-#' @returns Dataframe containing "A" (amplitude), "phase" (phase), "offset" (x offset), "peak" (peak value), and "R2" (correlation).
-#' @param index represents the index of the gene to be analyzed.
-#' @param num_expressed_genes represents the number of genes there are to be analyzed in the dataframe.
-#' @param gene_expression_dataframe represents the dataframe used as input for the analysis.
-#' @param zeitgeber_times represents the Zeitgeber Time, or the relative timescale used for the circadian analysis.
-#' @examples
-#' out_pars <- generate_observed_parameters(index=1, num_expressed_genes=10345, gene_expression_dataframe=df_with_gene_data, zeitgeber_time=df_with_ZT_data
-print('RhythmicityCode.R: Defining generate_observed_parameters function...')
 generate_observed_parameters <- function(index, condition, num_expressed_genes, gene_expression_dataframe, zeitgeber_times) {
-    covariate_adjusted_observations_filename <- paste("./Results/variance_partitioning_plots/", condition, "/residualmodelfit_", condition, ".RData", sep='')
-  load(covariate_adjusted_observations_filename)
-  out <- fitSinCurve(xx=as.numeric(zeitgeber_times), observed=as.numeric(residual))
-  out_row <- data.frame(A=out$A, phase=out$phase, offset=out$offset, peak=out$peak, R2=out$R2) 
+  observed_para <- data.frame(A=numeric(num_expressed_genes), phase=numeric(num_expressed_genes), offset=numeric(num_expressed_genes), peak=numeric(num_expressed_genes), R2=numeric(num_expressed_genes))
+  observed_para[index,] <- fitSinCurve(xx=as.numeric(zeitgeber_times), observed=as.numeric(gene_expression_dataframe[index,]))
+  out_row <- data.frame(A=observed_para$A[index], phase=observed_para$phase[index], offset=observed_para$offset[index], peak=observed_para$peak[index], R2=observed_para$R2[index])
   return(out_row)
 }
 
@@ -77,8 +63,8 @@ observed_para_c_MDD <- generate_observed_parameters(index=1, condition="MDD", nu
 print('RhythmicityCode.R: Defining generate_circadian_drawings function...')
 # Generate scatter plots
 gene_names <- c("SKA2")
-number_of_top_genes <- nrow(top.control)
-system("mkdir -p ./Results/Rhythmicity/C/PDF")
+
+system("mkdir -p ./Results/Rhythmicity/PDF")
 
 print("Done")
 dir.create('./Results/Rhythmicity/PDF/Control')
@@ -90,11 +76,96 @@ fileName_BD <- paste('./Results/Rhythmicity/PDF/BD', '_SKA2_', '.png', sep='')
 dir.create('./Results/Rhythmicity/PDF/MDD')
 fileName_MDD <- paste('./Results/Rhythmicity/PDF/MDD', '_SKA2_', '.png', sep='')
 
-print('RhythmicityCode.R: Generating circadian drawings for SKA2 gene for control...')
+#' generate_null_parameters()
+#' Generate the null parameters for the fitted sinusoid in the expressed genes over shuffled TOD
+#' @returns Dataframe containing "A" (amplitude), "phase" (phase), "offset" (x offset), "peak" (peak value), and "R2" (correlation).
+#' @param index represents the index of the gene to be analyzed.
+#' @param num_expressed_genes represents the number of genes there are to be analyzed in the dataframe.
+#' @param gene_expression_dataframe represents the dataframe used as input for the analysis.
+#' @param zeitgeber_times represents the Zeitgeber Time, or the relative timescale used for the circadian analysis.
+#' @examples
+#' out_pars <- generate_null_parameters(index=1, num_expressed_genes=10345, gene_expression_dataframe=df_with_gene_data, zeitgeber_time=df_with_ZT_data)
+print('RhythmicityCode.R: Defining generate_null_parameters function...')
+generate_null_parameters <- function(index, condition, num_expressed_genes, gene_expression_dataframe, zeitgeber_times) {
+  shuffled_zeitgeber_times <- sample(zeitgeber_times, length(cohort_data_C$ZT), replace=TRUE)
+  out <- lm(gene_expression_dataframe[index,] ~ rep(mean(gene_expression_dataframe[index,]), length(gene_expression_dataframe[index,])))
+  out_row <- summary(out)$adj.r.squared
+  png()
+  plot(out)
+  dev.off()
+  return(out_row)
+}
+
+# Find the number of times that you would have found the observed R2 value in the null distribution
+print("RhythmicityCode.R: Running empirical p-value for SKA2 gene for control...")
+permutations <- 1 
 covariate_adjusted_observations_filename <- paste("./Results/variance_partitioning_plots/", "C", "/residualmodelfit_", "C", ".RData", sep='')
 load(covariate_adjusted_observations_filename)
-print(residual)
+empirical_pvalue_C <- do.call(rbind, lapply(1:permutations, function(x) {
+  if (x %% 10 == 0) {
+    print(paste("Null Permutation", x))
+  }
+  row <- generate_null_parameters(index=1, condition="C", num_expressed_genes=1, gene_expression_dataframe=residual, zeitgeber_times=sample(zeitgeber_times_all, nrow(residual)))
+  return(row)
+}))
+empirical_p_value_C <- length(which(empirical_pvalue_C>= observed_para_c_C$R2)) / permutations
+print("Empirical P-Value for SKA2 gene for control:")
+print(empirical_p_value_C)
+
+
+print("RhythmicityCode.R: Running empirical p-value for SKA2 gene for SZ...")
+permutations <- 1
+covariate_adjusted_observations_filename <- paste("./Results/variance_partitioning_plots/", "SZ", "/residualmodelfit_", "SZ", ".RData", sep='')
+load(covariate_adjusted_observations_filename)
+empirical_pvalue_SZ <- do.call(rbind, lapply(1:permutations, function(x) {
+  if (x %% 10 == 0) {
+    print(paste("Null Permutation", x))
+  }
+  row <- generate_null_parameters(index=1, condition="SZ", num_expressed_genes=1, gene_expression_dataframe=residual, zeitgeber_times=sample(zeitgeber_times_all, nrow(residual)))
+  return(row)
+}))
+
+# Find the number of times that you would have found the observed R2 value in the null distribution
+empirical_p_value_SZ <- length(which(empirical_pvalue_SZ >= observed_para_c_SZ$R2)) / permutations
+print("Empirical P-Value for SKA2 gene for SZ:")
+print(empirical_p_value_SZ)
+
+print("RhythmicityCode.R: Running empirical p-value for SKA2 gene for BD...")
+permutations <- 1
+covariate_adjusted_observations_filename <- paste("./Results/variance_partitioning_plots/", "BD", "/residualmodelfit_", "BD", ".RData", sep='')
+load(covariate_adjusted_observations_filename)
+empirical_pvalue_BD <- do.call(rbind, lapply(1:permutations, function(x) {
+  if (x %% 10 == 0) {
+    print(paste("Null Permutation", x))
+  }
+  row <- generate_null_parameters(index=1, condition="BD", num_expressed_genes=1, gene_expression_dataframe=residual, zeitgeber_times=sample(zeitgeber_times_all, nrow(residual)))
+  return(row)
+}))
+
+# Find the number of times that you would have found the observed R2 value in the null distribution
+empirical_p_value_BD <- length(which(empirical_pvalue_BD >= observed_para_c_BD$R2)) / permutations
+print("Empirical P-Value for SKA2 gene for BD:")
+print(empirical_p_value_BD)
+
+print("RhythmicityCode.R: Running empirical p-value for SKA2 gene for MDD...")
+permutations <- 1
+covariate_adjusted_observations_filename <- paste("./Results/variance_partitioning_plots/", "MDD", "/residualmodelfit_", "MDD", ".RData", sep='')
+load(covariate_adjusted_observations_filename)
+empirical_pvalue_MDD <- do.call(rbind, lapply(1:permutations, function(x) {
+  if (x %% 10 == 0) {
+    print(paste("Null Permutation", x))
+  }
+  row <- generate_null_parameters(index=1, condition="MDD", num_expressed_genes=1, gene_expression_dataframe=residual, zeitgeber_times=sample(zeitgeber_times_all, nrow(residual)))
+  return(row)
+}))
+
+# Find the number of times that you would have found the observed R2 value in the null distribution
+empirical_p_value_MDD <- length(which(empirical_pvalue_MDD >= observed_para_c_MDD$R2)) / permutations
+print("Empirical P-Value for SKA2 gene for MDD:")
+print(empirical_p_value_MDD)
+
 png(fileName_C)
+special_information <- paste("Empirical P-Value: ", empirical_p_value_C)
 circadianDrawing(tod=cohort_data_C$ZT, expr=residual, apar=observed_para_c_C, labels=cohort_data_C$suicide, specInfo=special_information)
 dev.off()
 print('RhythmicityCode.R: Generating circadian drawings for SKA2 gene for SZ...')
@@ -115,7 +186,6 @@ load(covariate_adjusted_observations_filename)
 png(fileName_MDD)
 circadianDrawing(tod=cohort_data_MDD$ZT, expr=residual, apar=observed_para_c_MDD, labels=cohort_data_MDD$suicide, specInfo=special_information)
 dev.off()
-
 
 print('generate_jakob_plots.R: Routine complete.')
 
