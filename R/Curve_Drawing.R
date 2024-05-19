@@ -1,5 +1,5 @@
 #Circadian Drawing
-circadianDrawing <- function(tod, expr, apar, labels, specInfo=NULL){	
+circadianDrawing <- function(tod, expr, apar, labels, specInfo=NULL, xlim, ylim){	
   getPred <- function(parS, xx) {	
     parS$A * sin(2*pi/24 * (xx + parS$phase)) + parS$offset
   }
@@ -10,7 +10,7 @@ circadianDrawing <- function(tod, expr, apar, labels, specInfo=NULL){
   #pvalue <- signif(apar$pvalue,3)
   
   # amain <- paste('PV L3 healthy\n',geneName,':',probeName,'\n','p-value =',apvalue,sep='')
-  amain <- paste(specInfo,', ',geneName,': ','; peak = ',peak,sep='')
+  amain <- paste(specInfo)
   
   times <- seq(-6,18,0.1)
   pred <- getPred(apar,times)
@@ -18,7 +18,7 @@ circadianDrawing <- function(tod, expr, apar, labels, specInfo=NULL){
   labelColor <- as.numeric(factor(labels))
   
   plot(tod,expr,col=labelColor, pch=16,cex=2,
-       main=amain, xlim=c(-6, 18), ylim=c(-300, 200),
+       main=amain, xlim=xlim, ylim=ylim,
        xlab='TOD',ylab='Expression')
   smoothingSpline = smooth.spline(x=times, y=pred, spar=0.35)
   lines(smoothingSpline,col='red',lwd=4)
