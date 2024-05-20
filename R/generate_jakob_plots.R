@@ -107,7 +107,7 @@ ska2_mdd_expression_no_covariates <- residual[1,]
 write.csv(ska2_mdd_expression_no_covariates, file="./Results/MDD/ska2_mdd_expression_no_covariates.csv")
 
 # Generate plots for Jakob in high resolution for SKA2 expression values for control group
-png("./Results/C/ska2_control_diurnal_expression.png", width=800, height=800)
+pdf("./Results/C/ska2_control_diurnal_expression.pdf")
 # circadiandrawing <- function(tod, expr, apar, labels, specinfo=null){	
 apar_C_w <- generate_observed_parameters(index=1, condition="C", num_expressed_genes=1, gene_expression_dataframe=expression_data_C, zeitgeber_times=cohort_data_C$ZT)
 apar_SZ_w <- generate_observed_parameters(index=1, condition="SZ", num_expressed_genes=1, gene_expression_dataframe=expression_data_SZ, zeitgeber_times=cohort_data_SZ$ZT)
@@ -120,28 +120,28 @@ circadianDrawing(tod=cohort_data_C$ZT, expr=expression_data_C, specInfo=paste("D
 dev.off()
 
 # Generate plots for Jakob in high resolution for SKA2 expression values for SZ group
-png("./Results/SZ/ska2_sz_diurnal_expression.png", width=800, height=800)
+pdf("./Results/SZ/ska2_sz_diurnal_expression.pdf")
 
 circadianDrawing(tod=cohort_data_SZ$ZT, expr=expression_data_SZ, specInfo=paste("Diurnal Expression of SKA2 in Schizophrenia Group"),
                  apar=apar_SZ_w, labels=cohort_data_SZ$DDx, xlim=xlim, ylim=ylim)
 dev.off()
 
 # Generate plots for Jakob in high resolution for SKA2 expression values for BD group
-png("./Results/BD/ska2_bd_diurnal_expression.png", width=800, height=800)
+pdf("./Results/BD/ska2_bd_diurnal_expression.pdf")
 
 circadianDrawing(tod=cohort_data_BD$ZT, expr=expression_data_BD, specInfo=paste("Diurnal Expression of SKA2 in Bipolar Disorder Group"),
                  apar=apar_BD_w, labels=cohort_data_BD$DDx, xlim=xlim, ylim=ylim)
 dev.off()
 
 # Generate plots for Jakob in high resolution for SKA2 expression values for MDD group
-png("./Results/MDD/ska2_mdd_diurnal_expression.png", width=800, height=800)
+pdf("./Results/MDD/ska2_mdd_diurnal_expression.pdf")
 
 circadianDrawing(tod=cohort_data_MDD$ZT, expr=expression_data_MDD, specInfo=paste("Diurnal Expression of SKA2 in Major Depressive Disorder Group"),
                  apar=apar_MDD_w, labels=cohort_data_MDD$DDx, xlim=xlim, ylim=ylim)
 dev.off()
 
 # Generate plots for Jakob in high resolution for SKA2 expression values for control group after removing covariates
-png("./Results/C/ska2_control_diurnal_expression_no_covariates.png", width=800, height=800)
+pdf("./Results/C/ska2_control_diurnal_expression_no_covariates.pdf")
 apar_C_n <- generate_observed_parameters(index=1, condition="C", num_expressed_genes=1, gene_expression_dataframe=ska2_control_expression_no_covariates, zeitgeber_times=cohort_data_C$ZT)
 apar_SZ_n <- generate_observed_parameters(index=1, condition="SZ", num_expressed_genes=1, gene_expression_dataframe=ska2_sz_expression_no_covariates, zeitgeber_times=cohort_data_SZ$ZT)
 apar_BD_n <- generate_observed_parameters(index=1, condition="BD", num_expressed_genes=1, gene_expression_dataframe=ska2_bd_expression_no_covariates, zeitgeber_times=cohort_data_BD$ZT)
@@ -153,7 +153,7 @@ circadianDrawing(tod=cohort_data_C$ZT, expr=ska2_control_expression_no_covariate
 dev.off()
 
 # Generate plots for Jakob in high resolution for SKA2 expression values for SZ group after removing covariates
-png("./Results/SZ/ska2_sz_diurnal_expression_no_covariates.png", width=800, height=800)
+pdf("./Results/SZ/ska2_sz_diurnal_expression_no_covariates.pdf")
 
 circadianDrawing(tod=cohort_data_SZ$ZT, expr=ska2_sz_expression_no_covariates, paste("Diurnal Expression of SKA2 in Schizophrenia Group After Removing Covariates"),
                  apar=apar_SZ_n, labels=cohort_data_SZ$DDx, xlim=xlim, ylim=ylim)
@@ -161,21 +161,25 @@ circadianDrawing(tod=cohort_data_SZ$ZT, expr=ska2_sz_expression_no_covariates, p
 dev.off()
 
 # Generate plots for Jakob in high resolution for SKA2 expression values for BD group after removing covariates
-png("./Results/BD/ska2_bd_diurnal_expression_no_covariates.png", width=800, height=800)
+pdf("./Results/BD/ska2_bd_diurnal_expression_no_covariates.pdf")
 
 circadianDrawing(tod=cohort_data_BD$ZT, expr=ska2_bd_expression_no_covariates, paste("Diurnal Expression of SKA2 in Bipolar Disorder Group After Removing Covariates"),
                  apar=apar_BD_n, labels=cohort_data_BD$DDx, xlim=xlim, ylim=ylim)
 dev.off()
 
 # Generate plots for Jakob in high resolution for SKA2 expression values for MDD group after removing covariates
-png("./Results/MDD/ska2_mdd_diurnal_expression_no_covariates.png", width=800, height=800)
+pdf("./Results/MDD/ska2_mdd_diurnal_expression_no_covariates.pdf")
 
 circadianDrawing(tod=cohort_data_MDD$ZT, expr=ska2_mdd_expression_no_covariates, paste("Diurnal Expression of SKA2 in Major Depressive Disorder Group After Removing Covariates"),
                  apar=apar_MDD_n, labels=cohort_data_MDD$DDx, xlim=xlim, ylim=ylim)
 dev.off()
 
 print(paste("R2 for SKA2 in Control Group: ", apar_C_w$R2, "R2 for SKA2 in Schizophrenia Group: ", apar_SZ_w$R2, "R2 for SKA2 in Bipolar Disorder Group: ", apar_BD_w$R2, "R2 for SKA2 in Major Depressive Disorder Group: ", apar_MDD_w$R2))
+print(paste("Amplitude for SKA2 in Control Group: ", apar_C_w$A, "Amplitude for SKA2 in Schizophrenia Group: ", apar_SZ_w$A, "Amplitude for SKA2 in Bipolar Disorder Group: ", apar_BD_w$A, "Amplitude for SKA2 in Major Depressive Disorder Group: ", apar_MDD_w$A))
+print(paste("Phase for SKA2 in Control Group: ", apar_C_w$phase, "Phase for SKA2 in Schizophrenia Group: ", apar_SZ_w$phase, "Phase for SKA2 in Bipolar Disorder Group: ", apar_BD_w$phase, "Phase for SKA2 in Major Depressive Disorder Group: ", apar_MDD_w$phase))
 print(paste("p-value for SKA2 in Control Group: ", get_lrtest(unlist(ska2_control_expression), cohort_data_C$ZT), "p-value for SKA2 in Schizophrenia Group: ", get_lrtest(unlist(ska2_sz_expression), cohort_data_SZ$ZT), "p-value for SKA2 in Bipolar Disorder Group: ", get_lrtest(unlist(ska2_bd_expression), cohort_data_BD$ZT), "p-value for SKA2 in Major Depressive Disorder Group: ", get_lrtest(unlist(ska2_mdd_expression), cohort_data_MDD$ZT)))
 
 print(paste("R2 for SKA2 in Control Group After Removing Covariates: ", apar_C_n$R2, "R2 for SKA2 in Schizophrenia Group After Removing Covariates: ", apar_SZ_n$R2, "R2 for SKA2 in Bipolar Disorder Group After Removing Covariates: ", apar_BD_n$R2, "R2 for SKA2 in Major Depressive Disorder Group After Removing Covariates: ", apar_MDD_n$R2))
+print(paste("Amplitude for SKA2 in Control Group After Removing Covariates: ", apar_C_n$A, "Amplitude for SKA2 in Schizophrenia Group After Removing Covariates: ", apar_SZ_n$A, "Amplitude for SKA2 in Bipolar Disorder Group After Removing Covariates: ", apar_BD_n$A, "Amplitude for SKA2 in Major Depressive Disorder Group After Removing Covariates: ", apar_MDD_n$A))
+print(paste("Phase for SKA2 in Control Group After Removing Covariates: ", apar_C_n$phase, "Phase for SKA2 in Schizophrenia Group After Removing Covariates: ", apar_SZ_n$phase, "Phase for SKA2 in Bipolar Disorder Group After Removing Covariates: ", apar_BD_n$phase, "Phase for SKA2 in Major Depressive Disorder Group After Removing Covariates: ", apar_MDD_n$phase))
 print(paste("p-value for SKA2 in Control Group After Removing Covariates: ", get_lrtest(unlist(ska2_control_expression_no_covariates), cohort_data_C$ZT), "p-value for SKA2 in Schizophrenia Group After Removing Covariates: ", get_lrtest(unlist(ska2_sz_expression_no_covariates), cohort_data_SZ$ZT), "p-value for SKA2 in Bipolar Disorder Group After Removing Covariates: ", get_lrtest(unlist(ska2_bd_expression_no_covariates), cohort_data_BD$ZT), "p-value for SKA2 in Major Depressive Disorder Group After Removing Covariates: ", get_lrtest(unlist(ska2_mdd_expression_no_covariates), cohort_data_MDD$ZT)))
