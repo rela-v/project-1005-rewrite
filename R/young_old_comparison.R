@@ -1,5 +1,31 @@
 # young_old_comparison.R
 
+#Split data into two groups: For example we will split the controls into younger and older 
+old_index<-which(cohort_data$age>=50)
+young_index<-which(cohort_data$age<50)
+
+expr.old<-gene_expression_dataframe[,old_index]
+expr.young<-gene_expression_dataframe[,young_index]
+
+tod_o<-cohort_data$ZT[old_index]
+tod_y<-cohort_data$ZT[young_index]
+
+observed_para_y <- data.frame(genes=Symbols,A=numeric(num_expressed_genes), phase=numeric(num_expressed_genes), offset=numeric(num_expressed_genes), peak=numeric(num_expressed_genes), R2=numeric(num_expressed_genes))
+observed_para_o <- data.frame(genes=Symbols,A=numeric(num_expressed_genes), phase=numeric(num_expressed_genes), offset=numeric(num_expressed_genes), peak=numeric(num_expressed_genes), R2=numeric(num_expressed_genes))
+
+print('RhythmicityCode.R: Running generate_observed_parameters function for old cohort in parallel...')
+cl <- makeClusterPSOCK(n.cores)
+# Parallelizing generate_observed_parameters
+clusterExport(cl, c("generate_observed_parameters", "fitSinCurve", "nls.lm", "parStartVal", "Symbols", "num_expressed_genes", "expr.old", "tod_o"))
+observed_para_c <- do.call(rbind,parLapply(cl, X=1:num_expressed_genes, fun=generate_observed_parameters, num_expressed_genes, expr.old, tod_o))
+stopCluster(cl)
+
+print('RhythmicityCode.R: Running generate_observed_parameters function for young cohort in parallel...')
+cl <- makeClusterPSOCK(n.cores)
+# Parallelizing generate_observed_parameters
+clusterExport(cl, c("generate_observed_parameters", "fitSinCurve", "nls.lm", "parStartVal", "Symbols", "num_expressed_genes", "expr.young", "tod_y"))
+observed_para_c <- do.call(rbind,parLapply(cl, X=1:num_expressed_genes, fun=generate_observed_parameters, num_expressed_genes, expr.young, tod_y))
+stopCluster(cl)
 # Generate Null Distributions: 
 setwd('./nullFolder')
 library(doParallel)
