@@ -56,7 +56,7 @@ remove_covariates <- function(condition) {
   metadata[c("ZT", "age", "onset", "duration", "lifetime.antipsychotics..fluphenazine.eq.", "pH", "brain.weight", "PMI")] <- lapply(metadata[c("ZT", "age", "onset", "duration", "lifetime.antipsychotics..fluphenazine.eq.", "pH", "brain.weight", "PMI")], as.numeric)
   metadata$lifetime.antipsychotics..fluphenazine.eq. <- log10(metadata$lifetime.antipsychotics..fluphenazine.eq. + 1)
   print(metadata$lifetime.antipsychotics..fluphenazine.eq.)
-  expr <- prelim_data[[2]][15150,]
+  expr <- prelim_data[[2]]
   print_column_levels(metadata)
   # Load the current varPart model
   formula <- switch(condition,
@@ -77,16 +77,13 @@ remove_covariates <- function(condition) {
 
   
   # Fit the variance partitioning model
-  print("db1")
-  print("db2")
   modelfit <- fitVarPartModel(expr, formula=sub_form, data=metadata, BPPARAM= multicoreParam) 
   residual  <- residuals(modelfit, expr)
   save(residual, file=paste("./Results/variance_partitioning_plots/", condition, "/residualmodelfit_", condition, ".RData", sep=''))
   return(residual)
 } 
-
-for (condition in c("BD", "MDD", "SZ", "C")) {
+# BD, MDD, SZ, C
+for (condition in c("C")) {
   print(paste0("Beginning analysis on ", condition))
   remove_covariates(condition)
 }
-

@@ -2,6 +2,7 @@
 
 install.packages("lmtest")
 library(lmtest)
+library(readxl)
 # Names of rows in gene expression matrix
 expression_data_of_interest <- read.csv("./Data/Project_1005-rawCounts-annotated.csv")
 cohort_data <- read.csv("./Data/cohort_data.csv", row.names = 1)
@@ -19,10 +20,9 @@ grab_metadata_expression_data <- function(relevant_condition) {
   return(list(filtered_cohort_data, filtered_expression_data))
 }
 
-generate_observed_parameters <- function(index, condition, num_expressed_genes, gene_expression_dataframe, zeitgeber_times) {
-  observed_para <- data.frame(A=numeric(num_expressed_genes), phase=numeric(num_expressed_genes), offset=numeric(num_expressed_genes), peak=numeric(num_expressed_genes), R2=numeric(num_expressed_genes))
-  observed_para[index,] <- fitSinCurve(xx=as.numeric(zeitgeber_times), observed=as.numeric(gene_expression_dataframe))
-  out_row <- data.frame(A=observed_para$A[index], phase=observed_para$phase[index], offset=observed_para$offset[index], peak=observed_para$peak[index], R2=observed_para$R2[index])
+generate_observed_parameters <- function(gene_expression_dataframe, zeitgeber_times) {
+  observed_para <- fitSinCurve(xx=as.numeric(zeitgeber_times), observed=as.numeric(gene_expression_dataframe))
+  out_row <- data.frame(A=observed_para$A, phase=observed_para$phase, offset=observed_para$offset, peak=observed_para$peak, R2=observed_para$R2)
   return(out_row)
 }
 
@@ -45,15 +45,6 @@ generate_null_parameters <- function(index, condition, num_expressed_genes, gene
 
 range01 <- function(x){(x-min(x))/(max(x)-min(x))}
 
-get_lrtest <- function(residuals, zeitgeber_times) {
-  lrtest_results <- list()
-  lrtest_results <- lrtest(lm(range01(residuals) ~ zeitgeber_times), lm(asin(range01(residuals)) ~ zeitgeber_times))
-  lrtest_results_pvalue <- pchisq(lrtest_results$Chisq[2], df=lrtest_results$`#Df`[2], lower.tail=FALSE)
-  return(lrtest_results_pvalue)
-}
-
-
-
 multicoreParam <- MulticoreParam(workers = availableCores())
 data_C <- grab_metadata_expression_data("C")
 data_SZ <- grab_metadata_expression_data("SZ")
@@ -72,10 +63,25 @@ expression_data_MDD <- unlist(data_MDD[[2]][15150,])
 
 
 # List of tasks:
-# 1. have the SKA2 expression values for each subject in excel
-# 2. export them in a higher resolution
-# 3. methods section
-# 4. send the figure without covariate effects
+# 1. Create function to shuffle zeitgeber times
+# 2. Get null parameters overall for all 4 conditions
+# 3. Get p-value for each condition from null distribution of parameters vs. observed parameters
+
+get_shuffled_data <- function(expression_data, zeitgeber_times) {
+  shuffled_zeitgeber_times <- sample(zeitgeber_times, length(expression_data), replace=TRUE)
+  return(shuffled_zeitgeber_times)
+}
+
+t_expression_data <- c(expression_data_C, expression_data_SZ, expression_data_BD, expression_data_MDD)
+t_ZT <- c(cohort_data_C$ZT, cohort_data_SZ$ZT, cohort_data_BD$ZT, cohort_data_MDD$ZT)
+
+get_pvalue <- function(expression_data_o, ZT_o, expression_data_n=t_expression_data, ZT_n=t_ZT) {
+  n_e <- 10000
+  null_parameters <- do.call(rbind, lapply(1:n_e, function(x) generate_observed_parameters(gene_expression_dataframe=expression_data_n, zeitgeber_times=get_shuffled_data(expression_data_n,ZT_n))))
+  observed_parameters <- generate_observed_parameters(gene_expression_dataframe=expression_data_o, zeitgeber_times=ZT_o)
+  p_value <- length(which(null_parameters$R2 > observed_parameters$R2))/n_e 
+  return(p_value)
+}
 
 # SKA2 expression values for each subject before removing covariates
 ska2_control_expression <- expression_data_C
@@ -109,10 +115,10 @@ write.csv(ska2_mdd_expression_no_covariates, file="./Results/MDD/ska2_mdd_expres
 # Generate plots for Jakob in high resolution for SKA2 expression values for control group
 pdf("./Results/C/ska2_control_diurnal_expression.pdf")
 # circadiandrawing <- function(tod, expr, apar, labels, specinfo=null){	
-apar_C_w <- generate_observed_parameters(index=1, condition="C", num_expressed_genes=1, gene_expression_dataframe=expression_data_C, zeitgeber_times=cohort_data_C$ZT)
-apar_SZ_w <- generate_observed_parameters(index=1, condition="SZ", num_expressed_genes=1, gene_expression_dataframe=expression_data_SZ, zeitgeber_times=cohort_data_SZ$ZT)
-apar_BD_w <- generate_observed_parameters(index=1, condition="BD", num_expressed_genes=1, gene_expression_dataframe=expression_data_BD, zeitgeber_times=cohort_data_BD$ZT)
-apar_MDD_w <- generate_observed_parameters(index=1, condition="MDD", num_expressed_genes=1, gene_expression_dataframe=expression_data_MDD, zeitgeber_times=cohort_data_MDD$ZT)
+apar_C_w <- generate_observed_parameters(gene_expression_dataframe=expression_data_C, zeitgeber_times=cohort_data_C$ZT)
+apar_SZ_w <- generate_observed_parameters(gene_expression_dataframe=expression_data_SZ, zeitgeber_times=cohort_data_SZ$ZT)
+apar_BD_w <- generate_observed_parameters(gene_expression_dataframe=expression_data_BD, zeitgeber_times=cohort_data_BD$ZT)
+apar_MDD_w <- generate_observed_parameters(gene_expression_dataframe=expression_data_MDD, zeitgeber_times=cohort_data_MDD$ZT)
 xlim <- c(min(c(cohort_data_C$ZT, cohort_data_SZ$ZT, cohort_data_BD$ZT, cohort_data_MDD$ZT)), max(c(cohort_data_C$ZT, cohort_data_SZ$ZT, cohort_data_BD$ZT, cohort_data_MDD$ZT)))
 ylim <- c(min(c(expression_data_C, expression_data_SZ, expression_data_BD, expression_data_MDD))-50, max(c(expression_data_C, expression_data_SZ, expression_data_BD, expression_data_MDD))+50)
 circadianDrawing(tod=cohort_data_C$ZT, expr=expression_data_C, specInfo=paste("Diurnal Expression of SKA2 in Control Group"),
@@ -142,10 +148,10 @@ dev.off()
 
 # Generate plots for Jakob in high resolution for SKA2 expression values for control group after removing covariates
 pdf("./Results/C/ska2_control_diurnal_expression_no_covariates.pdf")
-apar_C_n <- generate_observed_parameters(index=1, condition="C", num_expressed_genes=1, gene_expression_dataframe=ska2_control_expression_no_covariates, zeitgeber_times=cohort_data_C$ZT)
-apar_SZ_n <- generate_observed_parameters(index=1, condition="SZ", num_expressed_genes=1, gene_expression_dataframe=ska2_sz_expression_no_covariates, zeitgeber_times=cohort_data_SZ$ZT)
-apar_BD_n <- generate_observed_parameters(index=1, condition="BD", num_expressed_genes=1, gene_expression_dataframe=ska2_bd_expression_no_covariates, zeitgeber_times=cohort_data_BD$ZT)
-apar_MDD_n <- generate_observed_parameters(index=1, condition="MDD", num_expressed_genes=1, gene_expression_dataframe=ska2_mdd_expression_no_covariates, zeitgeber_times=cohort_data_MDD$ZT)
+apar_C_n <- generate_observed_parameters(gene_expression_dataframe=ska2_control_expression_no_covariates, zeitgeber_times=cohort_data_C$ZT)
+apar_SZ_n <- generate_observed_parameters(gene_expression_dataframe=ska2_sz_expression_no_covariates, zeitgeber_times=cohort_data_SZ$ZT)
+apar_BD_n <- generate_observed_parameters(gene_expression_dataframe=ska2_bd_expression_no_covariates, zeitgeber_times=cohort_data_BD$ZT)
+apar_MDD_n <- generate_observed_parameters(gene_expression_dataframe=ska2_mdd_expression_no_covariates, zeitgeber_times=cohort_data_MDD$ZT)
 xlim <- c(-6, 18)
 ylim <- c(min(c(ska2_control_expression_no_covariates, ska2_sz_expression_no_covariates, ska2_bd_expression_no_covariates, ska2_mdd_expression_no_covariates))-50, max(c(ska2_control_expression_no_covariates, ska2_sz_expression_no_covariates, ska2_bd_expression_no_covariates, ska2_mdd_expression_no_covariates))+50)
 circadianDrawing(tod=cohort_data_C$ZT, expr=ska2_control_expression_no_covariates, paste("Diurnal Expression of SKA2 in Control Group After Removing Covariates"),
@@ -174,12 +180,143 @@ circadianDrawing(tod=cohort_data_MDD$ZT, expr=ska2_mdd_expression_no_covariates,
                  apar=apar_MDD_n, labels=cohort_data_MDD$DDx, xlim=xlim, ylim=ylim)
 dev.off()
 
+
+
 print(paste("R2 for SKA2 in Control Group: ", apar_C_w$R2, "R2 for SKA2 in Schizophrenia Group: ", apar_SZ_w$R2, "R2 for SKA2 in Bipolar Disorder Group: ", apar_BD_w$R2, "R2 for SKA2 in Major Depressive Disorder Group: ", apar_MDD_w$R2))
 print(paste("Amplitude for SKA2 in Control Group: ", apar_C_w$A, "Amplitude for SKA2 in Schizophrenia Group: ", apar_SZ_w$A, "Amplitude for SKA2 in Bipolar Disorder Group: ", apar_BD_w$A, "Amplitude for SKA2 in Major Depressive Disorder Group: ", apar_MDD_w$A))
 print(paste("Phase for SKA2 in Control Group: ", apar_C_w$phase, "Phase for SKA2 in Schizophrenia Group: ", apar_SZ_w$phase, "Phase for SKA2 in Bipolar Disorder Group: ", apar_BD_w$phase, "Phase for SKA2 in Major Depressive Disorder Group: ", apar_MDD_w$phase))
-print(paste("p-value for SKA2 in Control Group: ", get_lrtest(unlist(ska2_control_expression), cohort_data_C$ZT), "p-value for SKA2 in Schizophrenia Group: ", get_lrtest(unlist(ska2_sz_expression), cohort_data_SZ$ZT), "p-value for SKA2 in Bipolar Disorder Group: ", get_lrtest(unlist(ska2_bd_expression), cohort_data_BD$ZT), "p-value for SKA2 in Major Depressive Disorder Group: ", get_lrtest(unlist(ska2_mdd_expression), cohort_data_MDD$ZT)))
+print(paste("p-value for SKA2 in Control Group: ", get_pvalue(unlist(ska2_control_expression), cohort_data_C$ZT), "p-value for SKA2 in Schizophrenia Group: ", get_pvalue(unlist(ska2_sz_expression), cohort_data_SZ$ZT), "p-value for SKA2 in Bipolar Disorder Group: ", get_pvalue(unlist(ska2_bd_expression), cohort_data_BD$ZT), "p-value for SKA2 in Major Depressive Disorder Group: ", get_pvalue(unlist(ska2_mdd_expression), cohort_data_MDD$ZT)))
 
 print(paste("R2 for SKA2 in Control Group After Removing Covariates: ", apar_C_n$R2, "R2 for SKA2 in Schizophrenia Group After Removing Covariates: ", apar_SZ_n$R2, "R2 for SKA2 in Bipolar Disorder Group After Removing Covariates: ", apar_BD_n$R2, "R2 for SKA2 in Major Depressive Disorder Group After Removing Covariates: ", apar_MDD_n$R2))
 print(paste("Amplitude for SKA2 in Control Group After Removing Covariates: ", apar_C_n$A, "Amplitude for SKA2 in Schizophrenia Group After Removing Covariates: ", apar_SZ_n$A, "Amplitude for SKA2 in Bipolar Disorder Group After Removing Covariates: ", apar_BD_n$A, "Amplitude for SKA2 in Major Depressive Disorder Group After Removing Covariates: ", apar_MDD_n$A))
 print(paste("Phase for SKA2 in Control Group After Removing Covariates: ", apar_C_n$phase, "Phase for SKA2 in Schizophrenia Group After Removing Covariates: ", apar_SZ_n$phase, "Phase for SKA2 in Bipolar Disorder Group After Removing Covariates: ", apar_BD_n$phase, "Phase for SKA2 in Major Depressive Disorder Group After Removing Covariates: ", apar_MDD_n$phase))
-print(paste("p-value for SKA2 in Control Group After Removing Covariates: ", get_lrtest(unlist(ska2_control_expression_no_covariates), cohort_data_C$ZT), "p-value for SKA2 in Schizophrenia Group After Removing Covariates: ", get_lrtest(unlist(ska2_sz_expression_no_covariates), cohort_data_SZ$ZT), "p-value for SKA2 in Bipolar Disorder Group After Removing Covariates: ", get_lrtest(unlist(ska2_bd_expression_no_covariates), cohort_data_BD$ZT), "p-value for SKA2 in Major Depressive Disorder Group After Removing Covariates: ", get_lrtest(unlist(ska2_mdd_expression_no_covariates), cohort_data_MDD$ZT)))
+print(paste("p-value for SKA2 in Control Group After Removing Covariates: ", get_pvalue(unlist(ska2_control_expression_no_covariates), cohort_data_C$ZT), "p-value for SKA2 in Schizophrenia Group After Removing Covariates: ", get_pvalue(unlist(ska2_sz_expression_no_covariates), cohort_data_SZ$ZT), "p-value for SKA2 in Bipolar Disorder Group After Removing Covariates: ", get_pvalue(unlist(ska2_bd_expression_no_covariates), cohort_data_BD$ZT), "p-value for SKA2 in Major Depressive Disorder Group After Removing Covariates: ", get_pvalue(unlist(ska2_mdd_expression_no_covariates), cohort_data_MDD$ZT)))
+
+### Mouse analysis
+# Load the data
+data <- read_excel("./Data/mouseSKA2_HIP_updated_JH.xlsx", sheet = 1)
+vehicle_data <- data[which(data[[2]] == "vehicle"),]
+dex_data <- data[which(data[[2]] == "Dex"),]
+lfchange <- data[[4]]
+zeitgeber_times <- data[[3]]
+lfchange_vehicle <- vehicle_data[[4]]
+zeitgeber_times_vehicle <- vehicle_data[[3]]
+lfchange_dex <- dex_data[[4]]
+zeitgeber_times_dex <- dex_data[[3]]
+# Generate plots for Jakob in high resolution for SKA2 expression values for mouse data
+pdf("./Results/mouse_ska2_diurnal_expression_vehicle.pdf")
+xlim <- c(min(zeitgeber_times), max(zeitgeber_times))
+ylim <- c(min(lfchange)-sd(lfchange), max(lfchange)+sd(lfchange))
+apar_mouse_vehicle <- generate_observed_parameters(gene_expression_dataframe=lfchange_vehicle, zeitgeber_times=zeitgeber_times_vehicle)
+circadianDrawing(tod=zeitgeber_times_vehicle, expr=lfchange_vehicle, specInfo=paste("Diurnal Expression of SKA2 in Mouse Hippocampus: Vehicle"),
+                 apar=apar_mouse_vehicle, labels=rep("Mouse", length(lfchange_vehicle)), xlim=xlim, ylim=ylim)
+dev.off()
+
+print(paste("R2 for SKA2 in Mouse Hippocampus for Vehicle: ", apar_mouse_vehicle$R2))
+print(paste("Amplitude for SKA2 in Mouse Hippocampus for Vehicle: ", apar_mouse_vehicle$A))
+print(paste("Phase for SKA2 in Mouse Hippocampus for Vehicle: ", apar_mouse_vehicle$phase))
+print(paste("p-value for SKA2 in Mouse Hippocampus for Vehicle: ", get_pvalue(lfchange_vehicle, zeitgeber_times_vehicle)))
+
+pdf("./Results/mouse_ska2_diurnal_expression_dex.pdf")
+xlim <- c(min(zeitgeber_times), max(zeitgeber_times))
+ylim <- c(min(lfchange)-sd(lfchange), max(lfchange)+sd(lfchange))
+apar_mouse_dex <- generate_observed_parameters(gene_expression_dataframe=lfchange_dex, zeitgeber_times=zeitgeber_times_dex)
+circadianDrawing(tod=zeitgeber_times_dex, expr=lfchange_dex, specInfo=paste("Diurnal Expression of SKA2 in Mouse Hippocampus: Dexamethasone"), apar=apar_mouse_dex, labels=rep("Mouse", length(lfchange_dex)), xlim=xlim, ylim=ylim)
+
+dev.off()
+print(paste("R2 for SKA2 in Mouse Hippocampus for Dex: ", apar_mouse_dex$R2))
+print(paste("Amplitude for SKA2 in Mouse Hippocampus for Dex: ", apar_mouse_dex$A))
+print(paste("Phase for SKA2 in Mouse Hippocampus for Dex: ", apar_mouse_dex$phase))
+print(paste("p-value for SKA2 in Mouse Hippocampus for Dex: ", get_pvalue(lfchange_dex, zeitgeber_times_dex)))
+
+# Generate null distribution of R2 values
+n_e <- 1000
+null_parameters_vehicle <- do.call(rbind, lapply(1:n_e, function(x) generate_observed_parameters(gene_expression_dataframe=lfchange_vehicle, zeitgeber_times=sample(zeitgeber_times, length(zeitgeber_times), replace=TRUE))))
+null_parameters_dex <- do.call(rbind, lapply(1:n_e, function(x) generate_observed_parameters(gene_expression_dataframe=lfchange_dex, zeitgeber_times=sample(zeitgeber_times, length(zeitgeber_times), replace=TRUE))))
+
+# Generate a binned frequency table of R2 values
+vehicle_R2 <- null_parameters_vehicle$R2
+dex_R2 <- null_parameters_dex$R2
+vehicle_R2_freq_table <- table(cut(vehicle_R2, breaks=seq(-1, 1, by=0.1)))
+dex_R2_freq_table <- table(cut(dex_R2, breaks=seq(-1,1, by=0.1)))
+
+fisher_test <- fisher.test(vehicle_R2_freq_table, dex_R2_freq_table)
+print(fisher_test)
+
+# Same process for phase
+vehicle_phase <- null_parameters_vehicle$phase
+dex_phase <- null_parameters_dex$phase
+vehicle_phase_freq_table <- table(cut(vehicle_phase, breaks=seq(min(c(vehicle_phase, dex_phase)), max(c(vehicle_phase, dex_phase)), by=0.1)))
+dex_phase_freq_table <- table(cut(dex_phase, breaks=seq(min(c(vehicle_phase, dex_phase)), max(c(vehicle_phase, dex_phase)), by=0.1)))
+
+fisher_test_phase <- fisher.test(vehicle_phase_freq_table, dex_phase_freq_table, simulate.p.value=TRUE)
+print(fisher_test_phase)
+
+# Same process for amplitude
+vehicle_A <- null_parameters_vehicle$A
+dex_A <- null_parameters_dex$A
+vehicle_A_freq_table <- table(cut(vehicle_A, breaks=seq(min(c(vehicle_A, dex_A)), max(c(vehicle_A, dex_A)), by=0.001)))
+dex_A_freq_table <- table(cut(dex_A, breaks=seq(min(c(vehicle_A, dex_A)), max(c(vehicle_A, dex_A)), by=0.001)))
+
+fisher_test_A <- fisher.test(vehicle_A_freq_table, dex_A_freq_table, simulate.p.value=TRUE)
+print(fisher_test_A)
+
+### Generate parameters for amygdala data: p-value for phase, amplitude, and R2, as well as comparison p-value
+
+# ska2_control_expression_no_covariates
+# ska2_bd_expression_no_covariates
+apar_C <- generate_observed_parameters(gene_expression_dataframe=ska2_control_expression_no_covariates, zeitgeber_times=cohort_data_C$ZT)
+apar_BD <- generate_observed_parameters(gene_expression_dataframe=ska2_bd_expression_no_covariates, zeitgeber_times=cohort_data_BD$ZT)
+print(paste("phase for control: ", apar_C$phase, ", phase for BD: ", apar_BD$phase))
+print(paste("amplitude for control: ", apar_C$A, ", amplitude for BD: ", apar_BD$A))
+print(paste("R2 for control: ", apar_C$R2, ", R2 for BD: ", apar_BD$R2))
+print(paste("p-value for control R2: ", get_pvalue(unlist(ska2_control_expression_no_covariates), cohort_data_C$ZT), ", p-value for BD R2: ", get_pvalue(unlist(ska2_bd_expression_no_covariates), cohort_data_BD$ZT)))
+
+# Generate comparison p-values for BD vs control
+# Generate binned frequency table of R2 values
+# For example:
+# vehicle_R2 <- null_parameters_vehicle$R2
+# dex_R2 <- null_parameters_dex$R2
+# vehicle_R2_freq_table <- table(cut(vehicle_R2, breaks=seq(-1, 1, by=0.1)))
+# dex_R2_freq_table <- table(cut(dex_R2, breaks=seq(-1,1, by=0.1)))
+
+# fisher_test <- fisher.test(vehicle_R2_freq_table, dex_R2_freq_table)
+# print(fisher_test)
+
+# So for control vs. BD in phase:
+n_e <- 1000
+null_parameters_control <- do.call(rbind, lapply(1:n_e, function(x) generate_observed_parameters(gene_expression_dataframe=ska2_control_expression_no_covariates, zeitgeber_times=sample(cohort_data_C$ZT, length(cohort_data_C$ZT), replace=TRUE))))
+null_parameters_bd <- do.call(rbind, lapply(1:n_e, function(x) generate_observed_parameters(gene_expression_dataframe=ska2_bd_expression_no_covariates, zeitgeber_times=sample(cohort_data_BD$ZT, length(cohort_data_BD$ZT), replace=TRUE))))
+
+control_phase <- null_parameters_control$phase
+bd_phase <- null_parameters_bd$phase
+control_phase_freq_table <- table(cut(control_phase, breaks=seq(min(c(control_phase, bd_phase)), max(c(control_phase, bd_phase)), by=0.1)))
+bd_phase_freq_table <- table(cut(bd_phase, breaks=seq(min(c(control_phase, bd_phase)), max(c(control_phase, bd_phase)), by=0.1)))
+
+fisher_test_phase <- fisher.test(control_phase_freq_table, bd_phase_freq_table, simulate.p.value=TRUE)
+print("Phase comparison p-value")
+print(fisher_test_phase)
+
+# For amplitude
+control_A <- null_parameters_control$A
+bd_A <- null_parameters_bd$A
+
+control_A_freq_table <- table(cut(control_A, breaks=seq(min(c(control_A, bd_A)), max(c(control_A, bd_A)), by=0.001)))
+bd_A_freq_table <- table(cut(bd_A, breaks=seq(min(c(control_A, bd_A)), max(c(control_A, bd_A)), by=0.001)))
+
+fisher_test_A <- fisher.test(control_A_freq_table, bd_A_freq_table, simulate.p.value=TRUE)
+print("Amplitude comparison p-value")
+print(fisher_test_A)
+
+# For R2
+control_R2 <- null_parameters_control$R2
+bd_R2 <- null_parameters_bd$R2
+
+control_R2_freq_table <- table(cut(control_R2, breaks=seq(-1, 1, by=0.1)))
+bd_R2_freq_table <- table(cut(bd_R2, breaks=seq(-1, 1, by=0.1)))
+
+fisher_test_R2 <- fisher.test(control_R2_freq_table, bd_R2_freq_table, simulate.p.value=TRUE)
+print("R2 comparison p-value")
+print(fisher_test_R2)
+
+

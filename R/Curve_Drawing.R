@@ -12,7 +12,7 @@ circadianDrawing <- function(tod, expr, apar, labels, specInfo=NULL, xlim, ylim)
   # amain <- paste('PV L3 healthy\n',geneName,':',probeName,'\n','p-value =',apvalue,sep='')
   amain <- paste(specInfo)
   
-  times <- seq(-6,18,0.1)
+  times <- seq(min(tod),max(tod),length=100) 
   pred <- getPred(apar,times)
   
   labelColor <- as.numeric(factor(labels))

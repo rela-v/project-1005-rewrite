@@ -33,14 +33,20 @@ colnames(expression_data) <- c(rownames(cohort_data))
 expression_data_subjects<-rownames(cohort_data)
 # Create an empty vector for edited expression_data_subjects vector
 print("main.R: Initializing External Functions...")
-source('./R/load_data.R')
-source('./R/remove_covariates.R')
+# source('./R/load_data.R')
+# source('./R/remove_covariates.R')
 # system.time(source("./R/RhythmicityCode.R"))
-source('./R/Curve_Drawing.R')
+# source('./R/Curve_Drawing.R')
 # source('./R/fitSinCurve.R')
-source('./R/generate_jakob_plots.R')
+# source('./R/generate_jakob_plots.R')
 # source("./R/generate_p_values.R")
 # print("main.R: Running ./R/DE.R...")
 # source("./R/DE.R")
+for (condition in c('BD', 'MDD', 'SZ', 'C')) {
+  print(condition)
+  source('R/collect_covariate_removed_data.R')
+  grab_residuals(condition)
+}
+
 print("main.R: Routine Complete.\nSee Results in the `./Results/` folder.")
 
